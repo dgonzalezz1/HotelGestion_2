@@ -1,0 +1,12 @@
+com\hotel\util\ConexionDB.class
+com\hotel\dao\HabitacionDAO.class
+com\hotel\servlet\HabitacionServlet.class
+com\hotel\modelo\Habitacion.class
+com\hotel\dao\ClienteDAO.class
+com\mycompany\hotelgestion_2\JakartaRestConfiguration.class
+com\hotel\modelo\Reserva.class
+com\hotel\servlet\ReservaServlet.class
+com\hotel\dao\ReservaDAO.class
+com\hotel\modelo\Cliente.class
+com\hotel\servlet\ClienteServlet.class
+com\mycompany\hotelgestion_2\resources\JakartaEE8Resource.class
