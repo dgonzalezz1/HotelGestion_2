@@ -190,81 +190,112 @@
             <div class="alert alert-error"><%= error %></div>
         <% } %>
         
-        <!-- Formulario de Nueva Reserva -->
-        <div class="form-container">
-            <h2>Crear Nueva Reserva</h2>
-            <form action="ReservaServlet" method="post">
-                <input type="hidden" name="accion" value="crear">
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="clienteId">Cliente*</label>
-                        <select id="clienteId" name="clienteId" required>
-                            <option value="">Seleccione un cliente</option>
-                            <%
-                                ClienteDAO clienteDAO = new ClienteDAO();
-                                List<Cliente> clientes = clienteDAO.listarClientes();
-                                for (Cliente c : clientes) {
-                            %>
-                                <option value="<%= c.getId() %>">
-                                    <%= c.getNombreCompleto() %> - DPI: <%= c.getDpi() %>
-                                </option>
-                            <% } %>
-                        </select>
-                        <small><a href="clientes.jsp">¿Cliente no registrado? Regístrelo aquí</a></small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="habitacionId">Habitación*</label>
-                        <select id="habitacionId" name="habitacionId" required onchange="actualizarPrecio()">
-                            <option value="">Seleccione una habitación</option>
-                            <%
-                                HabitacionDAO habitacionDAO = new HabitacionDAO();
-                                List<Habitacion> habitaciones = habitacionDAO.listarDisponibles();
-                                for (Habitacion h : habitaciones) {
-                            %>
-                                <option value="<%= h.getId() %>" data-precio="<%= h.getPrecioNoche() %>">
-                                    Hab. <%= h.getNumero() %> - <%= h.getTipo() %> - Q <%= String.format("%.2f", h.getPrecioNoche()) %>/noche
-                                </option>
-                            <% } %>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="fechaEntrada">Fecha de Entrada*</label>
-                        <input type="date" id="fechaEntrada" name="fechaEntrada" required 
-                               onchange="calcularTotal()">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="fechaSalida">Fecha de Salida*</label>
-                        <input type="date" id="fechaSalida" name="fechaSalida" required 
-                               onchange="calcularTotal()">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="numeroPersonas">Número de Personas*</label>
-                        <input type="number" id="numeroPersonas" name="numeroPersonas" 
-                               min="1" max="10" value="1" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="anticipo">Anticipo (Q)*</label>
-                        <input type="number" id="anticipo" name="anticipo" step="0.01" 
-                               min="0" value="0" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Total Estimado: <span id="totalEstimado" style="color: #28a745; font-size: 1.3em;">Q 0.00</span></label>
-                    <input type="hidden" id="total" name="total" value="0">
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Crear Reserva</button>
-            </form>
-        </div>
+        <form action="ReservaServlet" method="post" onsubmit="return validarFormulario()">
+    <input type="hidden" name="accion" value="crear">
+    
+    <div class="form-group">
+        <label for="clienteId">Cliente*</label>
+        <select id="clienteId" name="clienteId" required>
+            <option value="">Seleccione un cliente</option>
+            <%
+                ClienteDAO clienteDAO = new ClienteDAO();
+                List<Cliente> clientes = clienteDAO.listarClientes();
+                for (Cliente c : clientes) {
+            %>
+                <option value="<%= c.getId() %>">
+                    <%= c.getNombreCompleto() %> - DPI: <%= c.getDpi() %>
+                </option>
+            <% } %>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="habitacionId">Habitación*</label>
+        <select id="habitacionId" name="habitacionId" required>
+            <option value="">Seleccione una habitación</option>
+            <%
+                HabitacionDAO habitacionDAO = new HabitacionDAO();
+                List<Habitacion> habitaciones = habitacionDAO.listarDisponibles();
+                for (Habitacion h : habitaciones) {
+            %>
+                <option value="<%= h.getId() %>" data-precio="<%= h.getPrecioNoche() %>">
+                    Hab. <%= h.getNumero() %> - <%= h.getTipo() %> - Q <%= h.getPrecioNoche() %>/noche
+                </option>
+            <% } %>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="fechaEntrada">Fecha de Entrada*</label>
+        <input type="date" id="fechaEntrada" name="fechaEntrada" required 
+               min="<%= java.time.LocalDate.now() %>"
+               onchange="calcularTotal()">
+    </div>
+    
+    <div class="form-group">
+        <label for="fechaSalida">Fecha de Salida*</label>
+        <input type="date" id="fechaSalida" name="fechaSalida" required 
+               min="<%= java.time.LocalDate.now().plusDays(1) %>"
+               onchange="calcularTotal()">
+    </div>
+    
+    <div class="form-group">
+        <label for="numPersonas">Número de Personas*</label>
+        <input type="number" id="numPersonas" name="numPersonas" 
+               min="1" max="10" value="1" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="anticipo">Anticipo (Q)</label>
+        <input type="number" id="anticipo" name="anticipo" 
+               min="0" step="0.01" value="0">
+    </div>
+    
+    <div class="form-group">
+        <label>Total Estimado:</label>
+        <h3 id="totalEstimado" style="color: #2563eb;">Q 0.00</h3>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Crear Reserva</button>
+</form>
+
+<script>
+function validarFormulario() {
+    const fechaEntrada = document.getElementById('fechaEntrada').value;
+    const fechaSalida = document.getElementById('fechaSalida').value;
+    
+    if (!fechaEntrada || !fechaSalida) {
+        alert('Por favor seleccione las fechas de entrada y salida');
+        return false;
+    }
+    
+    if (fechaEntrada >= fechaSalida) {
+        alert('La fecha de salida debe ser posterior a la fecha de entrada');
+        return false;
+    }
+    
+    return true;
+}
+
+function calcularTotal() {
+    const habitacionSelect = document.getElementById('habitacionId');
+    const fechaEntrada = document.getElementById('fechaEntrada').value;
+    const fechaSalida = document.getElementById('fechaSalida').value;
+    
+    if (!habitacionSelect.value || !fechaEntrada || !fechaSalida) return;
+    
+    const precio = parseFloat(habitacionSelect.options[habitacionSelect.selectedIndex].dataset.precio);
+    
+    const fecha1 = new Date(fechaEntrada);
+    const fecha2 = new Date(fechaSalida);
+    const noches = Math.ceil((fecha2 - fecha1) / (1000 * 60 * 60 * 24));
+    
+    if (noches > 0) {
+        const total = precio * noches;
+        document.getElementById('totalEstimado').textContent = 'Q ' + total.toFixed(2);
+    }
+}
+</script>
         
         <!-- Lista de Reservas Recientes -->
         <div class="reservas-list">

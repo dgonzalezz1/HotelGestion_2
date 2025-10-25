@@ -254,7 +254,7 @@
             
             List<Habitacion> todasHabitaciones = habitacionDAO.listarHabitaciones();
             List<Habitacion> disponibles = habitacionDAO.listarDisponibles();
-            List<Reserva> reservasActivas = reservaDAO.obtenerReservasActivas();
+            List<Reserva> reservasActivas = reservaDAO.listarReservasActivas();
             
             int totalHab = todasHabitaciones.size();
             int habDisponibles = disponibles.size();

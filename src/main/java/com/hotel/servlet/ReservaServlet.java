@@ -50,53 +50,99 @@ public class ReservaServlet extends HttpServlet {
     }
     
     /**
-     * Crear una nueva reserva
-     */
-    private void crearReserva(HttpServletRequest request, HttpServletResponse response) 
-            throws IOException {
+ * Crear una nueva reserva con manejo de errores mejorado
+ */
+private void crearReserva(HttpServletRequest request, HttpServletResponse response) 
+        throws IOException {
+    
+    try {
+        // Obtener parámetros con validación
+        String clienteIdStr = request.getParameter("clienteId");
+        String habitacionIdStr = request.getParameter("habitacionId");
+        String fechaEntradaStr = request.getParameter("fechaEntrada");
+        String fechaSalidaStr = request.getParameter("fechaSalida");
+        String numPersonasStr = request.getParameter("numPersonas");
+        String anticipoStr = request.getParameter("anticipo");
         
-        try {
-            // Obtener parámetros
-            int clienteId = Integer.parseInt(request.getParameter("clienteId"));
-            int habitacionId = Integer.parseInt(request.getParameter("habitacionId"));
-            Date fechaEntrada = Date.valueOf(request.getParameter("fechaEntrada"));
-            Date fechaSalida = Date.valueOf(request.getParameter("fechaSalida"));
-            int numeroPersonas = Integer.parseInt(request.getParameter("numeroPersonas"));
-            double anticipo = Double.parseDouble(request.getParameter("anticipo"));
-            double total = Double.parseDouble(request.getParameter("total"));
-            
-            // Validar fechas
-            if (fechaSalida.before(fechaEntrada)) {
-                response.sendRedirect("reservas.jsp?error=La fecha de salida debe ser posterior a la de entrada");
-                return;
-            }
-            
-            // Crear objeto Reserva
-            Reserva nuevaReserva = new Reserva();
-            nuevaReserva.setClienteId(clienteId);
-            nuevaReserva.setHabitacionId(habitacionId);
-            nuevaReserva.setFechaEntrada(fechaEntrada);
-            nuevaReserva.setFechaSalida(fechaSalida);
-            nuevaReserva.setNumeroPersonas(numeroPersonas);
-            nuevaReserva.setAnticipo(anticipo);
-            nuevaReserva.setTotal(total);
-            nuevaReserva.setEstado("Pendiente");
-            
-            // Guardar en base de datos
-            boolean creada = reservaDAO.crearReserva(nuevaReserva);
-            
-            if (creada) {
-                response.sendRedirect("reservas.jsp?mensaje=Reserva creada exitosamente. ID: " + nuevaReserva.getId());
-            } else {
-                response.sendRedirect("reservas.jsp?error=Error al crear la reserva");
-            }
-            
-        } catch (NumberFormatException e) {
-            response.sendRedirect("reservas.jsp?error=Datos inválidos: " + e.getMessage());
-        } catch (IllegalArgumentException e) {
-            response.sendRedirect("reservas.jsp?error=Formato de fecha inválido");
+        // Log para debugging
+        System.out.println("=== CREANDO RESERVA ===");
+        System.out.println("Cliente ID: " + clienteIdStr);
+        System.out.println("Habitación ID: " + habitacionIdStr);
+        System.out.println("Fecha Entrada: " + fechaEntradaStr);
+        System.out.println("Fecha Salida: " + fechaSalidaStr);
+        System.out.println("Num Personas: " + numPersonasStr);
+        System.out.println("Anticipo: " + anticipoStr);
+        
+        // Validar que no sean null
+        if (clienteIdStr == null || habitacionIdStr == null || 
+            fechaEntradaStr == null || fechaSalidaStr == null || 
+            numPersonasStr == null) {
+            System.err.println("Error: Parámetros faltantes");
+            response.sendRedirect("reservas.jsp?error=Por favor complete todos los campos obligatorios");
+            return;
         }
+        
+        // Convertir parámetros
+        int clienteId = Integer.parseInt(clienteIdStr);
+        int habitacionId = Integer.parseInt(habitacionIdStr);
+        int numPersonas = Integer.parseInt(numPersonasStr);
+        double anticipo = (anticipoStr != null && !anticipoStr.isEmpty()) ? 
+                         Double.parseDouble(anticipoStr) : 0.0;
+        
+        // IMPORTANTE: Convertir fechas del formato HTML (YYYY-MM-DD) a java.sql.Date
+        java.sql.Date fechaEntrada = java.sql.Date.valueOf(fechaEntradaStr);
+        java.sql.Date fechaSalida = java.sql.Date.valueOf(fechaSalidaStr);
+        
+        // Validar que la fecha de entrada sea antes de la de salida
+        if (!fechaEntrada.before(fechaSalida)) {
+            System.err.println("Error: La fecha de entrada debe ser antes de la fecha de salida");
+            response.sendRedirect("reservas.jsp?error=La fecha de entrada debe ser antes de la fecha de salida");
+            return;
+        }
+        
+        // Crear objeto Reserva
+        Reserva reserva = new Reserva();
+        reserva.setClienteId(clienteId);
+        reserva.setHabitacionId(habitacionId);
+        reserva.setFechaEntrada(fechaEntrada);
+        reserva.setFechaSalida(fechaSalida);
+        reserva.setNumeroPersonas(numPersonas);
+        reserva.setEstado("Pendiente");
+        
+        System.out.println("Objeto Reserva creado: " + reserva);
+        
+        // Guardar en base de datos
+        boolean exito = reservaDAO.crearReserva(reserva);
+        System.out.println("Resultado de guardar: " + exito);
+        
+        if (exito) {
+            // Si hay anticipo, agregarlo como pago
+            if (anticipo > 0) {
+                reservaDAO.agregarPago(reserva.getId(), anticipo);
+                System.out.println("Anticipo agregado: Q" + anticipo);
+            }
+            
+            System.out.println("✅ Reserva creada exitosamente con ID: " + reserva.getId());
+            response.sendRedirect("reservas.jsp?mensaje=Reserva creada exitosamente");
+        } else {
+            System.err.println("❌ Error: No se pudo guardar la reserva en la BD");
+            response.sendRedirect("reservas.jsp?error=Error al crear la reserva en la base de datos");
+        }
+        
+    } catch (NumberFormatException e) {
+        System.err.println("Error de formato numérico: " + e.getMessage());
+        e.printStackTrace();
+        response.sendRedirect("reservas.jsp?error=Error: Datos numéricos inválidos");
+    } catch (IllegalArgumentException e) {
+        System.err.println("Error en formato de fecha: " + e.getMessage());
+        e.printStackTrace();
+        response.sendRedirect("reservas.jsp?error=Error: Formato de fecha inválido. Use el calendario");
+    } catch (Exception e) {
+        System.err.println("Error general: " + e.getMessage());
+        e.printStackTrace();
+        response.sendRedirect("reservas.jsp?error=Error al crear la reserva: " + e.getMessage());
     }
+}
     
     /**
      * Realizar check-in
